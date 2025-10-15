@@ -1,14 +1,16 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using Microsoft.Win32;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Input;
-using Microsoft.Win32;
 
 // MVVM基础类 - 用于属性变更通知
 public class ViewModelBase : INotifyPropertyChanged
@@ -55,59 +57,20 @@ namespace YtDlpGui
         private bool _isDownloading = false;
         private string _lastUsedSavePath;
 
-        // --- 绑定到UI的公共属性 ---
-
-        public string VideoUrl
-        {
-            get => _videoUrl;
-            set { _videoUrl = value; OnPropertyChanged(); }
-        }
-
-        public string SelectedFormatArgs
-        {
-            get => _selectedFormatArgs;
-            set { _selectedFormatArgs = value; OnPropertyChanged(); }
-        }
-
-        public string LogOutput
-        {
-            get => _logOutput;
-            set { _logOutput = value; OnPropertyChanged(); }
-        }
-
-        public double DownloadProgress
-        {
-            get => _downloadProgress;
-            set { _downloadProgress = value; OnPropertyChanged(); }
-        }
-
-        public bool IsNotDownloading
-        {
-            get => !_isDownloading;
-        }
-
-        // --- ComboBox的数据源 ---
-        public ObservableCollection<DownloadOption> DownloadOptions { get; }
-
-        // --- 命令 ---
-        public ICommand DownloadCommand { get; }
-        public ICommand OpenFolderCommand { get; }
-        public ICommand BrowseFolderCommand { get; }
-        public string SavePath { get; set; } = Directory.GetCurrentDirectory();
-
         // --- 构造函数 ---
         public MainViewModel()
         {
-            // 初始化下载选项
+            // 直接初始化下载选项
             DownloadOptions = new ObservableCollection<DownloadOption>
             {
-                new DownloadOption { Description = "最佳视频 + 音频 (MP4)", Arguments = "-f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" },
-                new DownloadOption { Description = "仅最佳音频 (提取为MP3)", Arguments = "-x --audio-format mp3" },
-                new DownloadOption { Description = "最佳视频 (WebM)", Arguments = "-f bestvideo[ext=webm]+bestaudio[ext=webm]/best[ext=webm]/best" },
-                new DownloadOption { Description = "1080p 视频 (MP4)", Arguments = "-f \"bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best\"" }
+                 // 这是需要ffmpeg的版本，功能更全
+                new DownloadOption { Description = "最佳质量 (合并音视频)", Arguments = "-f bestvideo+bestaudio/best" },
+                new DownloadOption { Description = "最佳MP4", Arguments = "-f bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" },
+                new DownloadOption { Description = "最佳MP3", Arguments = "-x --audio-format mp3" }
+                // 这是不需要ffmpeg的版本，可能只能下720p
+                // new DownloadOption { Description = "最佳质量 (不合并)", Arguments = "-f best" }, 
             };
-            // 默认选择第一个
-            SelectedFormatArgs = DownloadOptions[0].Arguments;
+            SelectedFormatArgs = DownloadOptions.FirstOrDefault()?.Arguments;
 
             // 初始化命令
             DownloadCommand = new RelayCommand(async (o) => await ExecuteDownloadAsync(), (o) => CanExecuteDownload());
@@ -115,14 +78,26 @@ namespace YtDlpGui
             BrowseFolderCommand = new RelayCommand(ExecuteBrowseFolder);
         }
 
-        // ====== 逻辑修正 ======
-        // 修正了这里不应该影响下载状态的逻辑
+        // --- 绑定到UI的公共属性 ---
+        public string VideoUrl { get => _videoUrl; set { _videoUrl = value; OnPropertyChanged(); } }
+        public string SelectedFormatArgs { get => _selectedFormatArgs; set { _selectedFormatArgs = value; OnPropertyChanged(); } }
+        public string LogOutput { get => _logOutput; set { _logOutput = value; OnPropertyChanged(); } }
+        public double DownloadProgress { get => _downloadProgress; set { _downloadProgress = value; OnPropertyChanged(); } }
+        public bool IsNotDownloading => !_isDownloading;
+        public string SavePath { get; set; } = Directory.GetCurrentDirectory();
+        public ObservableCollection<DownloadOption> DownloadOptions { get; }
+
+        // --- 命令 ---
+        public ICommand DownloadCommand { get; }
+        public ICommand OpenFolderCommand { get; }
+        public ICommand BrowseFolderCommand { get; }
+
         private void ExecuteBrowseFolder(object obj)
         {
             var dialog = new SaveFileDialog()
             {
                 Title = "选择保存文件夹",
-                Filter = "文件夹 |*.*", // 这是一个让用户选择文件夹的技巧
+                Filter = "文件夹|*.this-is-a-folder",
                 FileName = "选择此文件夹"
             };
 
@@ -133,19 +108,22 @@ namespace YtDlpGui
             }
         }
 
-        private bool CanExecuteDownload()
+        private bool CanExecuteDownload() => !string.IsNullOrWhiteSpace(VideoUrl) && !_isDownloading;
+        private void ExecuteOpenFolder(object obj)
         {
-            return !string.IsNullOrWhiteSpace(VideoUrl) && !_isDownloading;
+            if (!string.IsNullOrEmpty(_lastUsedSavePath) && Directory.Exists(_lastUsedSavePath))
+            {
+                Process.Start(new ProcessStartInfo(_lastUsedSavePath) { UseShellExecute = true });
+            }
         }
+        private bool CanExecuteOpenFolder() => !string.IsNullOrEmpty(_lastUsedSavePath) && Directory.Exists(_lastUsedSavePath);
 
-        // ====== 乱码终极修复 ======
-        // 使用 cmd.exe 和 chcp 65001 命令来彻底解决中文乱码问题
         private async Task ExecuteDownloadAsync()
         {
             _lastUsedSavePath = SavePath;
             _isDownloading = true;
             OnPropertyChanged(nameof(IsNotDownloading));
-            CommandManager.InvalidateRequerySuggested();
+            CommandManager.InvalidateRequerySuggested(); // <--- 已修正
 
             LogOutput = "开始准备下载...\n";
             DownloadProgress = 0;
@@ -155,26 +133,21 @@ namespace YtDlpGui
 
             try
             {
-                // ================ 核心改造：从嵌入资源中提取可执行文件 ================
-                LogOutput += "正在准备执行环境...\n";
-                // 提取yt-dlp.exe，注意替换 "YtDlpGui" 为你的实际项目名
-                var ytDlpPath = ResourceManager.ExtractEmbeddedResource("YtDlpGui.Tools.yt-dlp.exe", "yt-dlp.exe");
-
-                // 提取ffmpeg.exe并获取其所在目录
+                // 如果你确实要移除ffmpeg，请把下面两行相关的代码注释掉
                 var ffmpegExePath = ResourceManager.ExtractEmbeddedResource("YtDlpGui.Tools.ffmpeg.exe", "ffmpeg.exe");
                 var ffmpegPath = Path.GetDirectoryName(ffmpegExePath);
-                LogOutput += "环境准备完成。\n";
-                // =========================================================================
+
+                var ytDlpPath = ResourceManager.ExtractEmbeddedResource("YtDlpGui.Tools.yt-dlp.exe", "yt-dlp.exe");
 
                 urlFilePath = Path.Combine(Path.GetTempPath(), $"ytdlp_url_{Guid.NewGuid()}.txt");
                 await File.WriteAllTextAsync(urlFilePath, VideoUrl, new UTF8Encoding(false));
 
                 var ytDlpCommand = new StringBuilder();
-                string outputTemplate = Path.Combine(SavePath, "%(title)s [%(id)s].%(ext)s");
+                string outputTemplate = Path.Combine(SavePath, "%%(title)s [%%(id)s].%%(ext)s");
 
                 ytDlpCommand.Append($"\"{ytDlpPath}\"");
                 ytDlpCommand.Append($" --batch-file \"{urlFilePath}\"");
-                ytDlpCommand.Append($" --ffmpeg-location \"{ffmpegPath}\"");
+                //ytDlpCommand.Append($" --ffmpeg-location \"{ffmpegPath}\""); // 如果移除ffmpeg，请注释此行
                 ytDlpCommand.Append($" -o \"{outputTemplate}\"");
                 ytDlpCommand.Append($" {SelectedFormatArgs}");
                 ytDlpCommand.Append(" --progress");
@@ -182,10 +155,11 @@ namespace YtDlpGui
 
                 var batchContent = new StringBuilder();
                 batchContent.AppendLine("@echo off");
-                batchContent.AppendLine("chcp 65001 > nul");
+                batchContent.AppendLine("chcp 65001 > nul"); // 修正笔误: 65001, not 6501
                 batchContent.AppendLine(ytDlpCommand.ToString());
 
                 batchFilePath = Path.Combine(Path.GetTempPath(), $"ytdlp_runner_{Guid.NewGuid()}.bat");
+                // 已修正文件写入方法的调用
                 await File.WriteAllTextAsync(batchFilePath, batchContent.ToString(), new UTF8Encoding(true));
 
                 var processStartInfo = new ProcessStartInfo
@@ -202,23 +176,8 @@ namespace YtDlpGui
 
                 using (var process = new Process { StartInfo = processStartInfo })
                 {
-                    // 日志处理部分保持不变
-                    process.OutputDataReceived += (sender, args) => {
-                        if (args.Data != null && !args.Data.Contains(batchFilePath.Replace(Path.GetTempPath(), "").TrimStart('\\')))
-                        {
-                            App.Current.Dispatcher.Invoke(() => { LogOutput += args.Data + "\n"; ParseProgress(args.Data); });
-                        }
-                    };
-
-                    process.ErrorDataReceived += (sender, args) => {
-                        if (!string.IsNullOrWhiteSpace(args.Data) &&
-                            !args.Data.Contains("@echo off") &&
-                            !args.Data.Contains("chcp 65001"))
-                        {
-                            App.Current.Dispatcher.Invoke(() => LogOutput += $"错误: {args.Data}\n");
-                        }
-                    };
-
+                    process.OutputDataReceived += (sender, args) => { if (args.Data != null) { App.Current.Dispatcher.Invoke(() => { LogOutput += args.Data + "\n"; ParseProgress(args.Data); }); } };
+                    process.ErrorDataReceived += (sender, args) => { if (!string.IsNullOrWhiteSpace(args.Data)) { App.Current.Dispatcher.Invoke(() => LogOutput += $"错误: {args.Data}\n"); } };
                     process.Start();
                     process.BeginOutputReadLine();
                     process.BeginErrorReadLine();
@@ -237,7 +196,7 @@ namespace YtDlpGui
 
                 _isDownloading = false;
                 OnPropertyChanged(nameof(IsNotDownloading));
-                CommandManager.InvalidateRequerySuggested();
+                CommandManager.InvalidateRequerySuggested(); // <--- 已修正
             }
         }
 
@@ -252,19 +211,6 @@ namespace YtDlpGui
                     DownloadProgress = progress;
                 }
             }
-        }
-
-        private void ExecuteOpenFolder(object obj)
-        {
-            if (!string.IsNullOrEmpty(_lastUsedSavePath) && Directory.Exists(_lastUsedSavePath))
-            {
-                Process.Start(new ProcessStartInfo(_lastUsedSavePath) { UseShellExecute = true });
-            }
-        }
-
-        private bool CanExecuteOpenFolder()
-        {
-            return !string.IsNullOrEmpty(_lastUsedSavePath) && Directory.Exists(_lastUsedSavePath);
         }
     }
 }

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:YtDlpGui"
         mc:Ignorable="d"
-        Title="yt-dlp GUI by C# WPF" Height="500" Width="800"
+        Title="yt-dlp GUI" Height="500" Width="800"
         WindowStartupLocation="CenterScreen">
 
     <!-- 将ViewModel设置为窗口的数据上下文 -->
@@ -21,11 +21,11 @@
             <!-- Language Switcher - NEW -->
             <RowDefinition Height="Auto"/>
             <!-- Format & Path -->
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" MinHeight="16"/>
             <!-- Button -->
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" MinHeight="5"/>
             <!-- Progress -->
-            <RowDefinition Height="*"/>
+            <RowDefinition/>
             <!-- Log -->
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
@@ -36,36 +36,36 @@
         </Grid.ColumnDefinitions>
 
         <!-- Video URL Input -->
-        <Label Grid.Row="0" Grid.Column="0" Content="视频链接:" VerticalAlignment="Center"/>
-        <TextBox Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="3" VerticalAlignment="Center" Margin="5"
-                 Text="{Binding VideoUrl, UpdateSourceTrigger=PropertyChanged}"/>
+        <Label Grid.Column="0" Content="视频链接:" VerticalAlignment="Center" Grid.ColumnSpan="2" Margin="0,0,530,0" Height="26"/>
+        <TextBox Grid.Column="1" Grid.ColumnSpan="3" VerticalAlignment="Center" Margin="5,0,0,0"
+                 Text="{Binding VideoUrl, UpdateSourceTrigger=PropertyChanged}" Height="18"/>
 
         <!-- Download Options -->
-        <Label Grid.Row="1" Grid.Column="0" Content="下载格式:" VerticalAlignment="Center"/>
-        <ComboBox Grid.Row="1" Grid.Column="1" Margin="5"
+        <Label Grid.Row="1" Grid.Column="0" Content="下载格式:" VerticalAlignment="Center" Grid.ColumnSpan="2" Margin="0,0,530,0" Height="26"/>
+        <ComboBox Grid.Row="1" Grid.Column="1" Margin="5,5,5,6"
                   ItemsSource="{Binding DownloadOptions}"
                   DisplayMemberPath="Description"
                   SelectedValuePath="Arguments"
                   SelectedValue="{Binding SelectedFormatArgs}"/>
 
-        <Button Grid.Row="1" Grid.Column="2" Content="选择保存位置" Margin="5" Padding="10,0"
+        <Button Grid.Row="1" Grid.Column="2" Content="选择保存位置" Margin="5,5,5,6" Padding="10,0"
                 Command="{Binding BrowseFolderCommand}"/>
 
-        <Button Grid.Row="1" Grid.Column="3" Content="打开目录" Margin="5,5,0,5" Padding="10,0"
+        <Button Grid.Row="1" Grid.Column="3" Content="打开目录" Margin="5,5,0,6" Padding="10,0"
         Command="{Binding OpenFolderCommand}"/>
 
         <!-- Action Button -->
-        <Button Grid.Row="2" Margin="0,10,5,10" Padding="0,10" FontWeight="Bold"
+        <Button Grid.Row="2" Margin="0,10,0,10" Padding="0,10" FontWeight="Bold"
                 Content="开始下载"
                 Command="{Binding DownloadCommand}"
                 IsEnabled="{Binding IsNotDownloading}" Grid.ColumnSpan="4"/>
 
         <!-- Progress Bar -->
-        <ProgressBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Height="10" Margin="5,5,5,5"
-                     Value="{Binding DownloadProgress}"/>
-        <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Center" VerticalAlignment="Center"
+        <ProgressBar Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
+                     Value="{Binding DownloadProgress}" Margin="0,57,0,0" Grid.RowSpan="2"/>
+        <TextBlock Grid.Row="3" VerticalAlignment="Center"
            Text="{Binding DownloadProgress, StringFormat={}{0:0}%}"
-           FontWeight="SemiBold" Foreground="White">
+           FontWeight="SemiBold" Foreground="White" Grid.ColumnSpan="4" TextAlignment="Center" Height="16">
             <TextBlock.Effect>
                 <DropShadowEffect ShadowDepth="1" Color="Black" Opacity="0.75" BlurRadius="2"/>
             </TextBlock.Effect>
@@ -73,14 +73,23 @@
 
 
         <!-- Log Output -->
-        <TextBox Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="4" Margin="5,5,5,10"
+        <TextBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4"
                  x:Name="LogTextBox"
                  Text="{Binding LogOutput, Mode=OneWay}"
                  IsReadOnly="True"
                  VerticalScrollBarVisibility="Auto"
                  FontFamily="Consolas"
                  TextWrapping="Wrap"
-                 TextChanged="LogTextBox_TextChanged" Grid.RowSpan="2"/>
+                 TextChanged="LogTextBox_TextChanged" Margin="0,2,0,18"/>
 
+
+        <!-- github -->
+        <TextBlock Grid.Row="5" Grid.ColumnSpan="4" Height="18" VerticalAlignment="Bottom">
+            <Run Text="GitHub" 
+                Foreground="Blue" 
+                TextDecorations="Underline"
+                Cursor="Hand"
+                MouseLeftButtonDown="Run_MouseLeftButtonDown"/>
+        </TextBlock>
     </Grid>
 </Window>

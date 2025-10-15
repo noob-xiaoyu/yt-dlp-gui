@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace YtDlpGui
 {
@@ -14,6 +15,14 @@ namespace YtDlpGui
         private void LogTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             LogTextBox.ScrollToEnd();
+        }
+        private void Run_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/noob-xiaoyu/yt-dlp-gui",
+                UseShellExecute = true
+            });
         }
     }
 }
