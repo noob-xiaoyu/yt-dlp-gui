@@ -134,8 +134,8 @@ namespace YtDlpGui
             try
             {
                 // 如果你确实要移除ffmpeg，请把下面两行相关的代码注释掉
-                var ffmpegExePath = ResourceManager.ExtractEmbeddedResource("YtDlpGui.Tools.ffmpeg.exe", "ffmpeg.exe");
-                var ffmpegPath = Path.GetDirectoryName(ffmpegExePath);
+                //var ffmpegExePath = ResourceManager.ExtractEmbeddedResource("YtDlpGui.Tools.ffmpeg.exe", "ffmpeg.exe");
+                //var ffmpegPath = Path.GetDirectoryName(ffmpegExePath);
 
                 var ytDlpPath = ResourceManager.ExtractEmbeddedResource("YtDlpGui.Tools.yt-dlp.exe", "yt-dlp.exe");
 
